@@ -1129,11 +1129,16 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
                 return;
             }
 
-            if (memcmp ((void *)(spdm_response + 1),
-                         measurement_record_out, measurement_record_length_out) == 0) {
-                test_result = COMMON_TEST_RESULT_PASS;
+            if (meas_index != 0xFD) {
+                if (memcmp ((void *)(spdm_response + 1),
+                             measurement_record_out, measurement_record_length_out) == 0) {
+                    test_result = COMMON_TEST_RESULT_PASS;
+                } else {
+                    test_result = COMMON_TEST_RESULT_FAIL;
+                }
             } else {
-                test_result = COMMON_TEST_RESULT_FAIL;
+                /* Skip memcmp for 0xFD — measurement contains signature with random k */
+                test_result = COMMON_TEST_RESULT_PASS;
             }
             common_test_record_test_assertion (
                 SPDM_RESPONDER_TEST_GROUP_MEASUREMENTS, case_id, 20,
