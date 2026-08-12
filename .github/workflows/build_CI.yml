@@ -56,6 +56,15 @@ jobs:
   VS2019_mbedtls_build:
     runs-on: windows-latest
     steps:
+      - name: Enable git long paths
+        # The recursive checkout pulls libspdm, then openssl, then openssl's
+        # pyca-cryptography test vectors, whose deepest file sits 193 characters
+        # below the repository root. GitHub checks out to a path containing the
+        # repository name twice, and this fork's name is 9 characters longer
+        # than the upstream one, which puts the total at 266 characters against
+        # a 260 character MAX_PATH. Upstream checks out the same commit at 248
+        # characters and passes, which is why this only fails here.
+        run: git config --system core.longpaths true
       - uses: actions/checkout@v7
         with:
           submodules: recursive
@@ -77,6 +86,9 @@ jobs:
   VS2019_openssl_build:
     runs-on: windows-latest
     steps:
+      - name: Enable git long paths
+        # See VS2019_mbedtls_build above for why this is required.
+        run: git config --system core.longpaths true
       - uses: actions/checkout@v7
         with:
           submodules: recursive
