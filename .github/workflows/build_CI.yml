@@ -2,10 +2,10 @@ name: build_CI_test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, caliptra-main-14 ]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ main ]
+    branches: [ main, caliptra-main-14 ]
   workflow_dispatch:
 
 env:
@@ -93,3 +93,92 @@ jobs:
           cd build
           cmake -G"NMake Makefiles" -DARCH=x64 -DTOOLCHAIN=VS2019 -DTARGET=Release -DCRYPTO=openssl ..
           nmake
+
+
+  # The validator ships only a library. It has to be built inside spdm-emu to
+  # produce a runnable spdm_device_validator_sample and to get a responder to
+  # test against, which is why this job cannot run from this repo alone.
+  # Without it CI is build-only, and a conformance regression reaches the branch
+  # undetected - exactly how DMTF/libspdm 84121c55 broke the CHALLENGE_AUTH
+  # suite without any CI turning red.
+  responder_conformance_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: negotiated
+            ver_args: ""
+          - name: v1_4
+            ver_args: "--ver 1.4"
+    steps:
+      - name: Checkout validator under test
+        uses: actions/checkout@v7
+        with:
+          path: validator-pr
+
+      - name: Checkout spdm-emu
+        uses: actions/checkout@v7
+        with:
+          repository: chipsalliance/caliptra-spdm-emu
+          ref: caliptra-main-14
+          path: spdm-emu
+          submodules: recursive
+
+      - name: Graft validator under test into spdm-emu
+        # spdm-emu compiles the validator sources directly against its own
+        # libspdm (SPDM_RESPONDER_VALIDATOR_DIR), so only the sources are
+        # swapped in. This repo's nested libspdm submodule points at upstream
+        # DMTF and is deliberately left untouched - it is not used by this build.
+        run: |
+          rsync -a --delete --exclude '.git' --exclude 'libspdm' \
+            validator-pr/ spdm-emu/SPDM-Responder-Validator/
+
+      - name: Build spdm-emu with the validator under test
+        run: |
+          cd spdm-emu
+          mkdir build
+          cd build
+          cmake -DARCH=x64 -DTOOLCHAIN=GCC -DTARGET=Release -DCRYPTO=openssl ..
+          # copy_sample_key is required. Without the sample certificates in
+          # build/bin the responder cannot serve CERTIFICATE requests and the
+          # run collapses partway through instead of failing cleanly.
+          make copy_sample_key
+          make -j`nproc`
+
+      - name: Run responder conformance suite (${{ matrix.name }})
+        run: |
+          cd spdm-emu/build/bin
+          # Disable mutual auth: the validator's KEY_EXCHANGE_RSP cases do not
+          # expect the responder to request it, but spdm_responder_emu asks for
+          # it by default, which produces four unrelated failures.
+          ./spdm_responder_emu --basic_mut_auth NO --mut_auth NO ${{ matrix.ver_args }} &
+          sleep 5s
+          ./spdm_device_validator_sample ${{ matrix.ver_args }}
+
+      - name: Check for conformance failures (${{ matrix.name }})
+        run: |
+          cd spdm-emu/build/bin
+          cat test.log
+          # spdm_device_validator_sample exits 0 even when assertions fail; the
+          # verdict is only recorded in test.log, so check it explicitly.
+          if grep -E 'test suite \(.*\) - pass: [0-9]+, fail: [1-9][0-9]*' test.log; then
+            echo "SPDM responder conformance suite reported failures"
+            exit 1
+          fi
+          # A collapsed run leaves a short or empty log, which would otherwise
+          # pass the check above by reporting nothing at all.
+          if ! grep -qE 'test suite \(.*\) - pass: [0-9]+, fail: [0-9]+' test.log; then
+            echo "No conformance results recorded - the run did not complete"
+            exit 1
+          fi
+
+      - name: Upload conformance logs (${{ matrix.name }})
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: conformance-${{ matrix.name }}
+          path: |
+            spdm-emu/build/bin/test.log
+            spdm-emu/build/bin/spdm_device_validator_output.txt
