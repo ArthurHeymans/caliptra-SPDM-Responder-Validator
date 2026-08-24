@@ -16,6 +16,26 @@ typedef struct {
 } spdm_capabilities_test_buffer_t;
 #pragma pack()
 
+static uint8_t spdm_test_capabilities_get_highest_version (uint8_t support_version_bitmask)
+{
+    if ((support_version_bitmask & SPDM_TEST_VERSION_MASK_V14) != 0) {
+        return SPDM_MESSAGE_VERSION_14;
+    }
+    if ((support_version_bitmask & SPDM_TEST_VERSION_MASK_V13) != 0) {
+        return SPDM_MESSAGE_VERSION_13;
+    }
+    if ((support_version_bitmask & SPDM_TEST_VERSION_MASK_V12) != 0) {
+        return SPDM_MESSAGE_VERSION_12;
+    }
+    if ((support_version_bitmask & SPDM_TEST_VERSION_MASK_V11) != 0) {
+        return SPDM_MESSAGE_VERSION_11;
+    }
+    if ((support_version_bitmask & SPDM_TEST_VERSION_MASK_V10) != 0) {
+        return SPDM_MESSAGE_VERSION_10;
+    }
+    return 0;
+}
+
 bool spdm_test_case_capabilities_setup_version (void *test_context,
                                                 spdm_version_number_t spdm_version)
 {
@@ -644,17 +664,8 @@ void spdm_test_case_capabilities_invalid_request (void *test_context)
 
     invalid_transport_size_v12[1] = test_buffer->max_spdm_msg_size + 1;
 
-    if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V14) != 0) {
-        version = SPDM_MESSAGE_VERSION_14;
-    } else if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V13) != 0) {
-        version = SPDM_MESSAGE_VERSION_13;
-    } else if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V12) != 0) {
-        version = SPDM_MESSAGE_VERSION_12;
-    } else if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V11) != 0) {
-        version = SPDM_MESSAGE_VERSION_11;
-    } else {
-        version = SPDM_MESSAGE_VERSION_10;
-    }
+    version = spdm_test_capabilities_get_highest_version (
+        test_buffer->support_version_bitmask);
 
     libspdm_zero_mem(&spdm_request, sizeof(spdm_request));
     spdm_request.header.spdm_version = version;
@@ -685,40 +696,38 @@ void spdm_test_case_capabilities_invalid_request (void *test_context)
                           sizeof(spdm_request));
 
         if (index < LIBSPDM_ARRAY_SIZE(invalid_flags_v11)) {
-            if ((test_buffer->support_version_bitmask &
-                 (SPDM_TEST_VERSION_MASK_V11 | SPDM_TEST_VERSION_MASK_V12 |
-                  SPDM_TEST_VERSION_MASK_V13 | SPDM_TEST_VERSION_MASK_V14)) != 0) {
+            if (index == 2) {
+                if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V11) == 0) {
+                    continue;
+                }
+                version = SPDM_MESSAGE_VERSION_11;
+            } else {
+                version = spdm_test_capabilities_get_highest_version (
+                    test_buffer->support_version_bitmask &
+                    (SPDM_TEST_VERSION_MASK_V11 | SPDM_TEST_VERSION_MASK_V12 |
+                     SPDM_TEST_VERSION_MASK_V14));
+            }
+            if (version != 0) {
                 common_test_record_test_message ("test v11 flags - 0x%08x\n",
                                                  invalid_flags_v11[index]);
-                if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V14) != 0) {
-                    version = SPDM_MESSAGE_VERSION_14;
-                    spdm_request_size = sizeof(spdm_request);
-                } else if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V13) != 0) {
-                    version = SPDM_MESSAGE_VERSION_13;
-                    spdm_request_size = sizeof(spdm_request);
-                } else if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V12) != 0) {
-                    version = SPDM_MESSAGE_VERSION_12;
+                if (version >= SPDM_MESSAGE_VERSION_12) {
                     spdm_request_size = sizeof(spdm_request);
                 } else {
-                    version = SPDM_MESSAGE_VERSION_11;
                     spdm_request_size =
                         offsetof(spdm_get_capabilities_request_t, data_transfer_size);
                 }
                 spdm_request_new.header.spdm_version = version;
                 spdm_request_new.flags = invalid_flags_v11[index];
-
-                /*the mut_auth_cap == 1 and encap_cap == 0 case need check for version1.1 only*/
-                if ((index == 2) && (version >= SPDM_MESSAGE_VERSION_12)) {
-                    continue;
-                }
             } else {
                 continue;
             }
         } else if (index < LIBSPDM_ARRAY_SIZE(invalid_flags_v11) + LIBSPDM_ARRAY_SIZE(invalid_transport_size_v12)) {
-            if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V12) != 0) {
-                common_test_record_test_message ("test v12 transfer_size - 0x%08x\n",
+            version = spdm_test_capabilities_get_highest_version (
+                test_buffer->support_version_bitmask &
+                (SPDM_TEST_VERSION_MASK_V12 | SPDM_TEST_VERSION_MASK_V14));
+            if (version != 0) {
+                common_test_record_test_message ("test v12+ transfer_size - 0x%08x\n",
                                                  invalid_transport_size_v12[index - LIBSPDM_ARRAY_SIZE(invalid_flags_v11)]);
-                version = SPDM_MESSAGE_VERSION_12;
                 spdm_request_size = sizeof(spdm_request);
                 spdm_request_new.header.spdm_version = version;
                 spdm_request_new.data_transfer_size = invalid_transport_size_v12[index - LIBSPDM_ARRAY_SIZE(invalid_flags_v11)];
@@ -728,14 +737,18 @@ void spdm_test_case_capabilities_invalid_request (void *test_context)
         } else if (index < LIBSPDM_ARRAY_SIZE(invalid_flags_v11) +
                            LIBSPDM_ARRAY_SIZE(invalid_transport_size_v12) +
                            LIBSPDM_ARRAY_SIZE(not_equal_data_transfer_size_max_spdm_msg_size_v12)) {
-            if ((test_buffer->support_version_bitmask & SPDM_TEST_VERSION_MASK_V12) != 0) {
-                common_test_record_test_message ("test v12 transfer_size - 0x%08x\n",
-                                                 invalid_transport_size_v12[index - LIBSPDM_ARRAY_SIZE(invalid_flags_v11)]);
-                version = SPDM_MESSAGE_VERSION_12;
+            version = spdm_test_capabilities_get_highest_version (
+                test_buffer->support_version_bitmask &
+                (SPDM_TEST_VERSION_MASK_V12 | SPDM_TEST_VERSION_MASK_V14));
+            if (version != 0) {
                 spdm_request_size = sizeof(spdm_request);
                 spdm_request_new.header.spdm_version = version;
                 spdm_request_new.data_transfer_size = spdm_request_new.max_spdm_msg_size - 1;
                 spdm_request_new.flags &= ~SPDM_GET_CAPABILITIES_REQUEST_FLAGS_CHUNK_CAP;
+                common_test_record_test_message (
+                    "test v12+ data_transfer_size - 0x%08x, max_spdm_msg_size - 0x%08x\n",
+                    spdm_request_new.data_transfer_size,
+                    spdm_request_new.max_spdm_msg_size);
             } else {
                 continue;
             }
