@@ -506,6 +506,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
     uint8_t *measurement_record_out;
     common_test_case_id case_id;
     uint32_t *session_id;
+    libspdm_session_info_t *session_info;
 
     spdm_test_context = test_context;
     spdm_context = spdm_test_context->spdm_context;
@@ -517,6 +518,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
     LIBSPDM_ASSERT (test_buffer->version == version);
 
     session_id = NULL;
+    session_info = NULL;
     switch (version) {
     case SPDM_MESSAGE_VERSION_10:
         case_id = SPDM_RESPONDER_TEST_CASE_MEASUREMENTS_SUCCESS_10;
@@ -543,6 +545,8 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
     }
 
     if (session_id != NULL) {
+        session_info = libspdm_get_session_info_via_session_id (spdm_context, *session_id);
+        LIBSPDM_ASSERT (session_info != NULL);
         common_test_record_test_message ("test session_id - 0x%08x\n", *session_id);
     }
     if (version == SPDM_MESSAGE_VERSION_10) {
@@ -696,7 +700,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
 
         if ((test_buffer->rsp_cap_flags & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP_SIG) != 0) {
 
-            status = libspdm_append_message_m(spdm_context, NULL,
+            status = libspdm_append_message_m(spdm_context, session_info,
                                               &spdm_request, spdm_request_size);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
                 common_test_record_test_assertion (
@@ -704,7 +708,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
                     COMMON_TEST_RESULT_NOT_TESTED, "append_message_m failure");
                 return;
             }
-            status = libspdm_append_message_m(spdm_context, NULL,
+            status = libspdm_append_message_m(spdm_context, session_info,
                                               spdm_response,
                                               (size_t)signature_ptr - (size_t)spdm_response);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
@@ -750,7 +754,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
             }
 
             result = libspdm_verify_measurement_signature(
-                spdm_context, NULL, slot_id, signature_ptr, signature_size);
+                spdm_context, session_info, slot_id, signature_ptr, signature_size);
             if (result) {
                 test_result = COMMON_TEST_RESULT_PASS;
             } else {
@@ -763,7 +767,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
                 return;
             }
 
-            libspdm_reset_message_m (spdm_context, NULL);
+            libspdm_reset_message_m (spdm_context, session_info);
         }
 
 
@@ -916,7 +920,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
 
         if ((test_buffer->rsp_cap_flags & SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP_SIG) != 0) {
 
-            status = libspdm_append_message_m(spdm_context, NULL,
+            status = libspdm_append_message_m(spdm_context, session_info,
                                               &spdm_request, spdm_request_size);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
                 common_test_record_test_assertion (
@@ -924,7 +928,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
                     COMMON_TEST_RESULT_NOT_TESTED, "append_message_m failure");
                 return;
             }
-            status = libspdm_append_message_m(spdm_context, NULL,
+            status = libspdm_append_message_m(spdm_context, session_info,
                                               spdm_response,
                                               (size_t)signature_ptr - (size_t)spdm_response);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
@@ -970,7 +974,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
             }
 
             result = libspdm_verify_measurement_signature(
-                spdm_context, NULL, slot_id, signature_ptr, signature_size);
+                spdm_context, session_info, slot_id, signature_ptr, signature_size);
             if (result) {
                 test_result = COMMON_TEST_RESULT_PASS;
             } else {
@@ -983,7 +987,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
                 return;
             }
 
-            libspdm_reset_message_m (spdm_context, NULL);
+            libspdm_reset_message_m (spdm_context, session_info);
         }
 
         /* get one-by-one */
@@ -1147,7 +1151,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
                 return;
             }
 
-            status = libspdm_append_message_m(spdm_context, NULL,
+            status = libspdm_append_message_m(spdm_context, session_info,
                                               &spdm_request, spdm_request_size);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
                 common_test_record_test_assertion (
@@ -1155,7 +1159,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
                     COMMON_TEST_RESULT_NOT_TESTED, "append_message_m failure");
                 return;
             }
-            status = libspdm_append_message_m(spdm_context, NULL,
+            status = libspdm_append_message_m(spdm_context, session_info,
                                               spdm_response,
                                               (size_t)signature_ptr - (size_t)spdm_response);
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
@@ -1206,7 +1210,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
                 }
 
                 result = libspdm_verify_measurement_signature(
-                    spdm_context, NULL, slot_id, signature_ptr, signature_size);
+                    spdm_context, session_info, slot_id, signature_ptr, signature_size);
                 if (result) {
                     test_result = COMMON_TEST_RESULT_PASS;
                 } else {
@@ -1219,7 +1223,7 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
                     return;
                 }
 
-                libspdm_reset_message_m (spdm_context, NULL);
+                libspdm_reset_message_m (spdm_context, session_info);
             }
         }
     }
