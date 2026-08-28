@@ -262,6 +262,7 @@ void spdm_test_case_challenge_auth_success_10_12 (void *test_context, uint8_t ve
     uint8_t hash_index;
     uint8_t meas_hash_type_index;
     uint32_t meas_hash_size;
+    size_t requester_context_size;
     uint8_t *cert_chain_hash_ptr;
     uint16_t *opaque_length_ptr;
     uint8_t *signature_ptr;
@@ -448,20 +449,23 @@ void spdm_test_case_challenge_auth_success_10_12 (void *test_context, uint8_t ve
             } else {
                 meas_hash_size = test_buffer->hash_size;
             }
+            requester_context_size = (test_buffer->version >= SPDM_MESSAGE_VERSION_13) ?
+                                     SPDM_REQ_CONTEXT_SIZE : 0;
             opaque_length_ptr =
                 (void *)((size_t)spdm_response + sizeof(spdm_challenge_auth_response_t) +
                          test_buffer->hash_size + SPDM_NONCE_SIZE +
                          meas_hash_size);
             if (spdm_response_size < sizeof(spdm_challenge_auth_response_t) +
                 test_buffer->hash_size + SPDM_NONCE_SIZE +
-                meas_hash_size + sizeof(uint16_t) +
+                meas_hash_size + sizeof(uint16_t) + requester_context_size +
                 test_buffer->signature_size) {
                 test_result = COMMON_TEST_RESULT_FAIL;
             } else {
                 if (spdm_response_size < sizeof(spdm_challenge_auth_response_t) +
                     test_buffer->hash_size + SPDM_NONCE_SIZE +
                     meas_hash_size + sizeof(uint16_t) +
-                    *opaque_length_ptr + test_buffer->signature_size) {
+                    *opaque_length_ptr + requester_context_size +
+                    test_buffer->signature_size) {
                     test_result = COMMON_TEST_RESULT_FAIL;
                 } else {
                     test_result = COMMON_TEST_RESULT_PASS;
@@ -482,17 +486,18 @@ void spdm_test_case_challenge_auth_success_10_12 (void *test_context, uint8_t ve
                          *opaque_length_ptr);
 
             if (test_buffer->version >= SPDM_MESSAGE_VERSION_13) {
-                uint8_t *requester_context = (uint8_t*)signature_ptr;
-
-                if (memcmp(requester_context, spdm_request_13.requester_context, SPDM_REQ_CONTEXT_SIZE) != 0) {
-                    test_result = COMMON_TEST_RESULT_FAIL;
-                } else {
+                if (memcmp (signature_ptr, spdm_request_13.requester_context,
+                            SPDM_REQ_CONTEXT_SIZE) == 0) {
                     test_result = COMMON_TEST_RESULT_PASS;
+                } else {
+                    test_result = COMMON_TEST_RESULT_FAIL;
                 }
-
-                common_test_record_test_assertion (SPDM_RESPONDER_TEST_GROUP_CHALLENGE_AUTH, case_id, 8,
-                test_result, "requester_context - %lx", &spdm_request_13.requester_context);
-
+                common_test_record_test_assertion (
+                    SPDM_RESPONDER_TEST_GROUP_CHALLENGE_AUTH, case_id, 8,
+                    test_result, "response requester context");
+                if (test_result == COMMON_TEST_RESULT_FAIL) {
+                    return;
+                }
                 signature_ptr += SPDM_REQ_CONTEXT_SIZE;
             }
 
