@@ -36,6 +36,7 @@ typedef struct {
     uint32_t hash_algo;
     uint32_t hash_size;
     uint32_t asym_algo;
+    uint32_t pqc_asym_algo;
     uint32_t signature_size;
     uint8_t slot_mask;
     uint8_t slot_count;
@@ -116,6 +117,30 @@ bool spdm_test_case_challenge_auth_setup_vca_digest (void *test_context,
              SPDM_ALGORITHMS_BASE_HASH_ALGO_TPM_ALG_SM3_256;
     libspdm_set_data(spdm_context, LIBSPDM_DATA_BASE_HASH_ALGO, &parameter,
                      &data32, sizeof(data32));
+    data32 = SPDM_ALGORITHMS_PQC_ASYM_ALGO_ML_DSA_44 |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_ML_DSA_65 |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_ML_DSA_87 |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHA2_128S |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHAKE_128S |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHA2_128F |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHAKE_128F |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHA2_192S |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHAKE_192S |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHA2_192F |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHAKE_192F |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHA2_256S |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHAKE_256S |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHA2_256F |
+             SPDM_ALGORITHMS_PQC_ASYM_ALGO_SLH_DSA_SHAKE_256F;
+    libspdm_set_data(spdm_context, LIBSPDM_DATA_PQC_ASYM_ALGO, &parameter,
+                     &data32, sizeof(data32));
+    libspdm_set_data(spdm_context, LIBSPDM_DATA_REQ_PQC_ASYM_ALG, &parameter,
+                     &data32, sizeof(data32));
+    data32 = SPDM_ALGORITHMS_KEM_ALG_ML_KEM_512 |
+             SPDM_ALGORITHMS_KEM_ALG_ML_KEM_768 |
+             SPDM_ALGORITHMS_KEM_ALG_ML_KEM_1024;
+    libspdm_set_data(spdm_context, LIBSPDM_DATA_KEM_ALG, &parameter,
+                     &data32, sizeof(data32));
     data16 = SPDM_ALGORITHMS_DHE_NAMED_GROUP_FFDHE_2048 |
              SPDM_ALGORITHMS_DHE_NAMED_GROUP_FFDHE_3072 |
              SPDM_ALGORITHMS_DHE_NAMED_GROUP_FFDHE_4096 |
@@ -187,7 +212,15 @@ bool spdm_test_case_challenge_auth_setup_vca_digest (void *test_context,
     data_size = sizeof(test_buffer->asym_algo);
     libspdm_get_data(spdm_context, LIBSPDM_DATA_BASE_ASYM_ALGO, &parameter, &test_buffer->asym_algo,
                      &data_size);
-    test_buffer->signature_size = libspdm_get_asym_signature_size(test_buffer->asym_algo);
+    data_size = sizeof(test_buffer->pqc_asym_algo);
+    libspdm_get_data(spdm_context, LIBSPDM_DATA_PQC_ASYM_ALGO, &parameter,
+                     &test_buffer->pqc_asym_algo, &data_size);
+    if (test_buffer->pqc_asym_algo != 0) {
+        test_buffer->signature_size =
+            libspdm_get_pqc_asym_signature_size(test_buffer->pqc_asym_algo);
+    } else {
+        test_buffer->signature_size = libspdm_get_asym_signature_size(test_buffer->asym_algo);
+    }
 
     status = libspdm_get_digest (spdm_context, NULL, &test_buffer->slot_mask,
                                  test_buffer->total_digest_buffer);
