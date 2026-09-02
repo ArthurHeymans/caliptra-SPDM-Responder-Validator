@@ -513,6 +513,11 @@ void spdm_test_case_challenge_auth_success_10_12 (void *test_context, uint8_t ve
                                                    spdm_response, &spdm_response_size);
             }
 
+            if (!LIBSPDM_STATUS_IS_ERROR(status)) {
+                status = spdm_test_handle_large_response(
+                    spdm_context, NULL, spdm_response, &spdm_response_size,
+                    sizeof(message));
+            }
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
                 common_test_record_test_assertion (
                     SPDM_RESPONDER_TEST_GROUP_CHALLENGE_AUTH, case_id, 0,
