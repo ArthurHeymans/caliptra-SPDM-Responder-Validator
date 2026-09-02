@@ -667,6 +667,11 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
         status = libspdm_send_receive_data(spdm_context, session_id, false,
                                            req_buf, spdm_request_size,
                                            spdm_response, &spdm_response_size);
+        if (!LIBSPDM_STATUS_IS_ERROR(status)) {
+            status = spdm_test_handle_large_response(
+                spdm_context, session_id, spdm_response, &spdm_response_size,
+                sizeof(message));
+        }
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
             common_test_record_test_assertion (
                 SPDM_RESPONDER_TEST_GROUP_MEASUREMENTS, case_id, 0,
@@ -901,6 +906,11 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
         status = libspdm_send_receive_data(spdm_context, session_id, false,
                                            req_buf, spdm_request_size,
                                            spdm_response, &spdm_response_size);
+        if (!LIBSPDM_STATUS_IS_ERROR(status)) {
+            status = spdm_test_handle_large_response(
+                spdm_context, session_id, spdm_response, &spdm_response_size,
+                sizeof(message));
+        }
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
             common_test_record_test_assertion (
                 SPDM_RESPONDER_TEST_GROUP_MEASUREMENTS, case_id, 0,
@@ -1152,6 +1162,11 @@ void spdm_test_case_measurements_success_10_11_12 (void *test_context, uint8_t v
             status = libspdm_send_receive_data(spdm_context, session_id, false,
                                                req_buf, spdm_request_size,
                                                spdm_response, &spdm_response_size);
+            if (!LIBSPDM_STATUS_IS_ERROR(status)) {
+                status = spdm_test_handle_large_response(
+                    spdm_context, session_id, spdm_response, &spdm_response_size,
+                    sizeof(message));
+            }
             if (LIBSPDM_STATUS_IS_ERROR(status)) {
                 common_test_record_test_assertion (
                     SPDM_RESPONDER_TEST_GROUP_MEASUREMENTS, case_id, 0,
